@@ -11,7 +11,9 @@ import matplotlib.pyplot as plt
 
 import get_oracle as oracle
 import get_error as err
+from sklearn.neighbors import DistanceMetric
 
+from sklearn.metrics import jaccard_similarity_score as jaccard
 
 def pool_leaner(loss):
     feature = []
@@ -32,11 +34,12 @@ def pool_leaner(loss):
             pick = random.sample(range(row_size), 1)[0]
             used.add(pick)
         else:
-            pick = get_next(data, points, used)
+            #pick = get_next(data, points, used)
+            pick = get_next_bool(data, points, used)
             used.add(pick)
         points = np.vstack([points, data[pick]])
         labels.append(oracle.oracle1(pick))
-        clf = SVC()
+        clf = RandomForestClassifier(n_estimators=10)
         clf.fit(points, np.array(labels))
         predictions = clf.predict(data)
         loss.append(err.generalization_error(predictions))
@@ -84,6 +87,18 @@ def pool_leaner2(loss):
 def get_next(data, points, used):
     dist = distance.cdist(data, points, 'euclidean')
     sum_dist = np.sum(dist, axis=1)
+    rank = np.argsort(sum_dist)[::-1][:len(sum_dist)]
+    for i in xrange(0, len(rank)):
+        if rank[i] not in used:
+            return i
+
+def get_next_bool(data, points, used):
+    sum_dist = np.zeros(data.shape[0])
+    for i in xrange(data.shape[0]):
+        cur_list = []
+        for j in xrange(points.shape[0]):
+            cur_list.append(jaccard(data[i], points[j]))
+        sum_dist[i] = np.sum(cur_list)
     rank = np.argsort(sum_dist)[::-1][:len(sum_dist)]
     for i in xrange(0, len(rank)):
         if rank[i] not in used:

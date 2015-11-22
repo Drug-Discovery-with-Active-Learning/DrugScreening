@@ -10,3 +10,5 @@ test.py
 .idea/.name
 
 *.xml
+
+*.pyc
