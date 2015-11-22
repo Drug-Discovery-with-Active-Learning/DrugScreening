@@ -18,6 +18,6 @@ def next_compound():
     return features[pick]
 
 
-if __name__ == "__main__":
-    feature = next_compound()
-    print feature
+# if __name__ == "__main__":
+#     feature = next_compound()
+#     print feature

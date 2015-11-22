@@ -4,3 +4,9 @@
 *.mat
 
 test.py
+
+*.iml
+
+.idea/.name
+
+*.xml
