@@ -5,6 +5,7 @@ import numpy as np
 import csv
 
 
+# TODO: current using Matlab code
 def dhm():
     feature = []
     with open('resources/pool.csv', 'r') as pool_file:

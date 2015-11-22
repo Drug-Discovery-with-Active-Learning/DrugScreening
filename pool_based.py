@@ -4,19 +4,23 @@
 import csv
 import numpy as np
 import random
+import scipy.io as sio
 import scipy.spatial.distance as distance
+import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
-import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import DistanceMetric
 
 import get_oracle as oracle
 import get_error as err
-from sklearn.neighbors import DistanceMetric
+
 
 from sklearn.metrics import jaccard_similarity_score as jaccard
 
 
-def pool_leaner(loss):
+def pool_reader():
     feature = []
     with open('resources/pool.csv', 'r') as pool_file:
         file_reader = csv.reader(pool_file)
@@ -25,10 +29,19 @@ def pool_leaner(loss):
             num = map(int, cur)
             feature.append(num)
     data = np.array(feature)
+    return data
+
+
+def rfc_learner():
+    accuracy = []
+    data = pool_reader()
     [row_size, col_size] = data.shape
     points = np.empty([0, col_size])
     labels = []
     used = set()
+    cluster = k_means(data)
+    cluster_zero = np.where(cluster == 0)[0]
+    cluster_one = np.where(cluster == 1)[0]
     for i in xrange(0, 256):
         # if i == 0:
         #     pick = random.sample(range(row_size), 1)[0]
@@ -38,7 +51,10 @@ def pool_leaner(loss):
         #     pick = get_next_bool(data, points, used)
         #     used.add(pick)
         while True:
-            pick = random.sample(range(row_size), 1)[0]
+            if i % 50 == 0:
+                pick = cluster_zero[random.sample(range(len(cluster_zero)), 1)[0]]
+            else:
+                pick = cluster_one[random.sample(range(len(cluster_one)), 1)[0]]
             if pick not in used:
                 break
         used.add(pick)
@@ -49,23 +65,16 @@ def pool_leaner(loss):
         clf = RandomForestClassifier(n_estimators=10)
         clf.fit(points, np.array(labels))
         predictions = clf.predict(data)
-        loss.append(err.generalization_error(predictions))
+        accuracy.append(err.generalization_error(predictions))
 
-    plt.plot(loss_vec)
+    plt.plot(accuracy)
     plt.show()
-    return loss
+    return accuracy
 
 
-def pool_leaner_norm(loss):
-    feature = []
-    with open('resources/pool.csv', 'r') as pool_file:
-        file_reader = csv.reader(pool_file)
-        for row in file_reader:
-            cur = np.array(row)
-            num = map(int, cur)
-            # TODO: changed num to norm
-            feature.append([np.linalg.norm(num)])
-    data = np.array(feature)
+def norm_learner():
+    accuracy = []
+    data = pool_reader()
     row_size = len(data)
     points = []
     labels = []
@@ -83,11 +92,45 @@ def pool_leaner_norm(loss):
         clf = RandomForestClassifier(n_estimators=10)
         clf.fit(np.array(points), np.array(labels))
         predictions = clf.predict(data)
-        loss.append(err.generalization_error(predictions))
+        accuracy.append(err.generalization_error(predictions))
 
-    plt.plot(loss_vec)
+    plt.plot(accuracy)
     plt.show()
-    return loss
+    return accuracy
+
+
+def lrc_learner():
+    accuracy = []
+    data = pool_reader()
+    [row_size, col_size] = data.shape
+    points = np.empty([0, col_size])
+    labels = []
+    used = set()
+    cluster = k_means(data)
+    cluster_zero = np.where(cluster == 0)[0]
+    cluster_one = np.where(cluster == 1)[0]
+    for i in xrange(0, 256):
+        while True:
+            pick = cluster_one[random.sample(range(len(cluster_one)), 1)[0]]
+            if pick not in used:
+                break
+        used.add(pick)
+        points = np.vstack([points, data[pick]])
+        labels.append(oracle.oracle1(pick))
+        if i >= 20:
+            clf = LogisticRegression(penalty='l2')
+            clf.fit(points, np.array(labels))
+            predictions = clf.predict(data)
+            accuracy.append(err.generalization_error(predictions))
+    plt.plot(accuracy)
+    plt.show()
+    return accuracy
+
+
+def k_means(data):
+    clf = KMeans(n_clusters=2, copy_x=True)
+    cluster = clf.fit_predict(data)
+    return cluster
 
 
 def get_next(data, points, used):
@@ -112,19 +155,9 @@ def get_next_bool(data, points, used):
             return i
 
 
-
-
-
 def svc_learner():
-    loss = []
-    feature = []
-    with open('resources/pool.csv', 'r') as pool_file:
-        file_reader = csv.reader(pool_file)
-        for row in file_reader:
-            cur = np.array(row)
-            num = map(int, cur)
-            feature.append(num)
-    data = np.array(feature)
+    accuracy = []
+    data = pool_reader()
     [row, col] = data.shape
 
     # do nothing about model until reasonable training subset achieved
@@ -140,22 +173,21 @@ def svc_learner():
             selected.append(data[r].tolist())
             labels.append(oracle.oracle1(r))
             used.add(r)
-            loss.append(err.generalization_error(preds))
+            accuracy.append(err.generalization_error(preds))
             if np.sum(labels) == 1:
-                loss.pop()
+                accuracy.pop()
                 break
-
 
     X = np.array(selected)
     y = np.array(labels)
-    #clf = SVC(kernel = 'linear', class_weight = {0:0.1, 1:0.9}, C = 0.1)
-    clf = SVC(kernel = 'linear', class_weight = 'balanced', C = 0.1)
+    # clf = SVC(kernel = 'linear', class_weight = {0:0.1, 1:0.9}, C = 0.1)
+    clf = SVC(kernel='linear', class_weight='balanced', C=0.1)
     clf.fit(X, y)
     preds = clf.predict(data)
-    loss.append(err.generalization_error(preds))
+    accuracy.append(err.generalization_error(preds))
 
     for x in xrange(256-len(used)):
-        #cur = get_next_bool(data, X, used)
+        # cur = get_next_bool(data, X, used)
         cur = random.randint(0, row-1)
         if cur not in used:
             used.add(cur)
@@ -163,15 +195,12 @@ def svc_learner():
             y = np.hstack([y.tolist(),[oracle.oracle1(cur)]])
             clf.fit(X, y)
             preds = clf.predict(data)
-            loss.append(err.generalization_error(preds))
-            #print err.generalization_error(preds)
-    plt.plot(loss)
+            accuracy.append(err.generalization_error(preds))
+            # print err.generalization_error(preds)
+    plt.plot(accuracy)
     plt.show()
-    return loss
-
-
+    return accuracy
 
 
 if __name__ == "__main__":
-
-    loss_vec = svc_learner()
+    accuracy_vec = lrc_learner()
