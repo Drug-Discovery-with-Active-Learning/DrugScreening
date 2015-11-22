@@ -112,6 +112,66 @@ def get_next_bool(data, points, used):
             return i
 
 
+
+
+
+def svc_learner():
+    loss = []
+    feature = []
+    with open('resources/pool.csv', 'r') as pool_file:
+        file_reader = csv.reader(pool_file)
+        for row in file_reader:
+            cur = np.array(row)
+            num = map(int, cur)
+            feature.append(num)
+    data = np.array(feature)
+    [row, col] = data.shape
+
+    # do nothing about model until reasonable training subset achieved
+    active_count = 0
+    preds = np.zeros(row)
+    used = set()
+    selected = []
+    labels = []
+    while 1:
+        r = random.randint(0, row-1)
+        if r not in used:
+            used.add(r)
+            selected.append(data[r].tolist())
+            labels.append(oracle.oracle1(r))
+            used.add(r)
+            loss.append(err.generalization_error(preds))
+            if np.sum(labels) == 1:
+                loss.pop()
+                break
+
+
+    X = np.array(selected)
+    y = np.array(labels)
+    #clf = SVC(kernel = 'linear', class_weight = {0:0.1, 1:0.9}, C = 0.1)
+    clf = SVC(kernel = 'linear', class_weight = 'balanced', C = 0.1)
+    clf.fit(X, y)
+    preds = clf.predict(data)
+    loss.append(err.generalization_error(preds))
+
+    for x in xrange(256-len(used)):
+        #cur = get_next_bool(data, X, used)
+        cur = random.randint(0, row-1)
+        if cur not in used:
+            used.add(cur)
+            X = np.vstack([X, data[cur]])
+            y = np.hstack([y.tolist(),[oracle.oracle1(cur)]])
+            clf.fit(X, y)
+            preds = clf.predict(data)
+            loss.append(err.generalization_error(preds))
+            #print err.generalization_error(preds)
+    plt.plot(loss)
+    plt.show()
+    return loss
+
+
+
+
 if __name__ == "__main__":
-    loss_vec = []
-    loss_vec = pool_leaner(loss_vec)
+
+    loss_vec = svc_learner()
