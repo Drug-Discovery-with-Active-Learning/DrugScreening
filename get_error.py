@@ -22,6 +22,6 @@ def test_error(predictions):
     return (np.count_nonzero(predictions == true_labels) + 0.0) / len(true_labels)
 
 
-# if __name__ == "__main__":
-#     predictions = np.zeros(10)
-#     generalization_error(predictions)
+if __name__ == "__main__":
+    predictions = np.zeros(10)
+    generalization_error(predictions)

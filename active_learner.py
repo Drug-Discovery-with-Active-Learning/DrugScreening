@@ -30,16 +30,21 @@ def pool_leaner(loss):
     labels = []
     used = set()
     for i in xrange(0, 256):
-        print i, '\n'
-        if i == 0:
+        # if i == 0:
+        #     pick = random.sample(range(row_size), 1)[0]
+        #     used.add(pick)
+        # else:
+        #     # pick = get_next(data, points, used)
+        #     pick = get_next_bool(data, points, used)
+        #     used.add(pick)
+        while True:
             pick = random.sample(range(row_size), 1)[0]
-            used.add(pick)
-        else:
-            # pick = get_next(data, points, used)
-            pick = get_next_bool(data, points, used)
-            used.add(pick)
+            if pick not in used:
+                break
+        used.add(pick)
         points = np.vstack([points, data[pick]])
-        print 'cur label', oracle.oracle1(pick), '\n'
+        if oracle.oracle1(pick) == 1:
+            print i, 'th iteration cur label ', 1, '\n'
         labels.append(oracle.oracle1(pick))
         clf = RandomForestClassifier(n_estimators=10)
         clf.fit(points, np.array(labels))
@@ -51,17 +56,16 @@ def pool_leaner(loss):
     return loss
 
 
-def pool_leaner2(loss):
+def pool_leaner_norm(loss):
     feature = []
     with open('resources/pool.csv', 'r') as pool_file:
         file_reader = csv.reader(pool_file)
         for row in file_reader:
             cur = np.array(row)
             num = map(int, cur)
-            # TODO: changed num
+            # TODO: changed num to norm
             feature.append([np.linalg.norm(num)])
     data = np.array(feature)
-    # [row_size, col_size] = data.shape
     row_size = len(data)
     points = []
     labels = []
