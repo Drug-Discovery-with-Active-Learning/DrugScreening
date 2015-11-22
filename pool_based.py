@@ -180,8 +180,10 @@ def svc_learner():
 
     X = np.array(selected)
     y = np.array(labels)
+
     # clf = SVC(kernel = 'linear', class_weight = {0:0.1, 1:0.9}, C = 0.1)
     clf = SVC(kernel='linear', class_weight='balanced', C=0.1)
+
     clf.fit(X, y)
     preds = clf.predict(data)
     accuracy.append(err.generalization_error(preds))
