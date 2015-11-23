@@ -54,7 +54,7 @@ def rfc_learner():
         clf = RandomForestClassifier(n_estimators=10, criterion='entropy')
         clf.fit(points, np.array(labels))
         predictions = clf.predict(data)
-        accuracy.append(err.generalization_error(predictions))
+        accuracy.append(err.generalization_error(predictions, true_labels))
 
     plt.plot(accuracy)
     plt.show()
@@ -87,7 +87,7 @@ def svm_learner():
     accuracy = []
     data = pool_reader()
     [row, col] = data.shape
-    true_labels = oracle.readmat()
+    true_labels = oracle.read_mat()
 
     # do nothing about model until reasonable training subset achieved
     active_count = 0
@@ -102,7 +102,7 @@ def svm_learner():
             selected.append(data[r].tolist())
             labels.append(true_labels[r])
             used.add(r)
-            accuracy.append(err.generalization_error(preds))
+            accuracy.append(err.generalization_error(preds, true_labels))
             if np.sum(labels) == 1 and len(labels) > 1:
                 accuracy.pop()
                 break
@@ -115,7 +115,7 @@ def svm_learner():
 
     clf.fit(X, y)
     preds = clf.predict(data)
-    accuracy.append(err.generalization_error(preds))
+    accuracy.append(err.generalization_error(preds, true_labels))
 
     for x in xrange(256-len(used)):
         # print x
@@ -139,7 +139,7 @@ def svm_learner():
         y = np.hstack([y.tolist(),[true_labels[cur]]])
         clf.fit(X, y)
         preds = clf.predict(data)
-        accuracy.append(err.generalization_error(preds))
+        accuracy.append(err.generalization_error(preds, true_labels))
         # print err.generalization_error(preds)
 
     plt.plot(accuracy)
@@ -151,7 +151,7 @@ def svm_margin_learner():
     accuracy = []
     data = pool_reader()
     [row, col] = data.shape
-    true_labels = oracle.readmat()
+    true_labels = oracle.read_mat()
 
     # do nothing about model until reasonable training subset achieved
     active_count = 0
@@ -166,7 +166,7 @@ def svm_margin_learner():
             selected.append(data[r].tolist())
             labels.append(true_labels[r])
             used.add(r)
-            accuracy.append(err.generalization_error(preds))
+            accuracy.append(err.generalization_error(preds, true_labels))
             if np.sum(labels) == 1 and len(labels) > 1:
                 accuracy.pop()
                 break
@@ -178,7 +178,7 @@ def svm_margin_learner():
     # clf = LinearSVC()
     clf.fit(X, y)
     preds = clf.predict(data)
-    accuracy.append(err.generalization_error(preds))
+    accuracy.append(err.generalization_error(preds, true_labels))
 
     for x in xrange(256-len(used)):
         # nearest to decision boundary
@@ -194,7 +194,7 @@ def svm_margin_learner():
         y = np.hstack([y.tolist(),[true_labels[cur]]])
         clf.fit(X, y)
         preds = clf.predict(data)
-        accuracy.append(err.generalization_error(preds))
+        accuracy.append(err.generalization_error(preds, true_labels))
         # print err.generalization_error(preds)
 
     plt.plot(accuracy)
@@ -206,11 +206,12 @@ def svm_margin_learner():
 def binary_vec_sim(a, b):
     return -np.count_nonzero(a-b)
 
+
 def svm_learner_all():
     data = pool_reader()
-    true_labels = oracle.readmat()
+    true_labels = oracle.read_mat()
 
-    clf = SVC(kernel = 'linear')
+    clf = SVC(kernel='linear')
     X = np.array(data)
     y = np.array(true_labels)
 
@@ -219,21 +220,24 @@ def svm_learner_all():
 
     clf.fit(X, y)
     preds = clf.predict(data)
-    accuracy = (err.generalization_error(preds))
+    accuracy = (err.generalization_error(preds, true_labels))
     print accuracy
     return accuracy
+
 
 def precision():
     return
 
+
 def recall():
     return
+
 
 def f1():
     return
 
 
 if __name__ == "__main__":
-    #accuracy_vec = svm_learner()
-    #accuracy_vec = svm_margin_learner()
-    accuracy = svm_learner_all()
+    # accuracy_vec = svm_learner()
+    # accuracy_vec = svm_margin_learner()
+    accuracy_vec = svm_margin_learner()
