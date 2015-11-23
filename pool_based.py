@@ -133,13 +133,13 @@ def k_means(data):
     return cluster
 
 
-def get_next(data, points, used):
-    dist = distance.cdist(data, points, 'euclidean')
-    sum_dist = np.sum(dist, axis=1)
-    rank = np.argsort(sum_dist)[::-1][:len(sum_dist)]
-    for i in xrange(0, len(rank)):
-        if rank[i] not in used:
-            return i
+# def get_next(data, points, used):
+#     dist = distance.cdist(data, points, 'euclidean')
+#     sum_dist = np.sum(dist, axis=1)
+#     rank = np.argsort(sum_dist)[::-1][:len(sum_dist)]
+#     for i in xrange(0, len(rank)):
+#         if rank[i] not in used:
+#             return i
 
 
 def get_next_bool(data, points, used):
@@ -155,7 +155,8 @@ def get_next_bool(data, points, used):
             print sum_dist[i]
             return i
 
-def getNext(data, active, used):
+
+def get_next(data, active, used):
     score = []
     for x in xrange(data.shape[0]):
         score.append(jaccard(data[x], data[active]))
@@ -166,7 +167,6 @@ def getNext(data, active, used):
             print jaccard(data[rank[x]], data[active])
             return rank[x]
 
-    return
 
 def svc_learner():
     accuracy = []
@@ -205,12 +205,12 @@ def svc_learner():
         # cur = random.randint(0, row-1)
         # closest to previous active selection strategy
         active = y.tolist().index(1)
-        cur = getNext(data, active, used)
+        cur = get_next(data, active, used)
         print oracle.oracle1(cur)
         if cur not in used:
             used.add(cur)
             X = np.vstack([X, data[cur]])
-            y = np.hstack([y.tolist(),[oracle.oracle1(cur)]])
+            y = np.hstack([y.tolist(), [oracle.oracle1(cur)]])
             clf.fit(X, y)
             preds = clf.predict(data)
             accuracy.append(err.generalization_error(preds))
