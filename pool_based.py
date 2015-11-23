@@ -4,6 +4,7 @@
 import csv
 import numpy as np
 import random
+import numpy.ma as ma
 import scipy.io as sio
 import scipy.spatial.distance as distance
 import matplotlib.pyplot as plt
@@ -12,6 +13,7 @@ from sklearn.svm import SVC
 from sklearn.cluster import KMeans
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import DistanceMetric
+from sklearn.svm import LinearSVC
 
 import get_oracle as oracle
 import get_error as err
@@ -172,10 +174,11 @@ def getNext(data, active, used):
         for x in xrange(data.shape[0]):
             cur_list = []
             for y in xrange(len(active)):
-                cur_list.append(jaccard(data[x], data[y]))
+                cur_list.append(binaryVecSim(data[x], data[y]))
             score.append(np.sum(cur_list))
-        rank = np.argsort(score)[::-1]
+        rank = np.argsort(score)
         for x in xrange(len(rank)):
+            #if rank[x] not in used and score[rank[x]] != 0:
             if rank[x] not in used:
                 #print rank[x]
                 #print 'score:', score[rank[x]]
@@ -201,33 +204,36 @@ def svc_learner():
             labels.append(oracle.oracle1(r))
             used.add(r)
             accuracy.append(err.generalization_error(preds))
-            if np.sum(labels) == 5 and len(labels) > 1:
+            if np.sum(labels) == 1 and len(labels) > 1:
                 accuracy.pop()
                 break
 
     X = np.array(selected)
     y = np.array(labels)
 
-    clf = SVC(kernel = 'linear', class_weight = {0:0.1, 1:0.9})
-
+    clf = SVC(kernel = 'linear')
+    #clf = LinearSVC()
     clf.fit(X, y)
     preds = clf.predict(data)
     accuracy.append(err.generalization_error(preds))
 
     for x in xrange(256-len(used)):
-        # random selection strategy
+        # print x
 
+        # random selection strategy
         # while 1:
         #     cur = random.randint(0, row-1)
         #     if cur not in used:
         #         break
 
-        # closest to previous 1 active selection strategy
-        # active = y.tolist().index(1)
-        active = np.where(y == 1)[0].tolist()
-        #print active
+        # farthest or say most different to previous 1 active selection strategy
+
+        # active = np.where(y == 1)[0].tolist()
+
+        # farthest to all used
+        active = list(used)
         cur = getNext(data, active, used)
-        #print 'oracle',oracle.oracle1(cur)
+        print 'oracle', oracle.oracle1(cur)
 
 
         used.add(cur)
@@ -242,6 +248,65 @@ def svc_learner():
     plt.show()
     return accuracy
 
+def svc_learner_new():
+    accuracy = []
+    data = pool_reader()
+    [row, col] = data.shape
+
+    # do nothing about model until reasonable training subset achieved
+    active_count = 0
+    preds = np.zeros(row)
+    used = set()
+    selected = []
+    labels = []
+    while 1:
+        r = random.randint(0, row-1)
+        if r not in used:
+            used.add(r)
+            selected.append(data[r].tolist())
+            labels.append(oracle.oracle1(r))
+            used.add(r)
+            accuracy.append(err.generalization_error(preds))
+            if np.sum(labels) == 1 and len(labels) > 1:
+                accuracy.pop()
+                break
+
+    X = np.array(selected)
+    y = np.array(labels)
+
+    clf = SVC(kernel = 'linear')
+    #clf = LinearSVC()
+    clf.fit(X, y)
+    preds = clf.predict(data)
+    accuracy.append(err.generalization_error(preds))
+
+    for x in xrange(256-len(used)):
+        # nearest to decision boundary
+        distance = clf.decision_function(data)
+        rank = np.argsort(np.abs(distance))
+        for x in xrange(len(rank)):
+            if rank[x] not in used:
+                cur = rank[x]
+                break
+
+        print 'oracle', oracle.oracle1(cur)
+
+        used.add(cur)
+        X = np.vstack([X, data[cur]])
+        y = np.hstack([y.tolist(),[oracle.oracle1(cur)]])
+        clf.fit(X, y)
+        preds = clf.predict(data)
+        accuracy.append(err.generalization_error(preds))
+        # print err.generalization_error(preds)
+
+    plt.plot(accuracy)
+    plt.show()
+    return accuracy
+
+
+
+def binaryVecSim(a, b):
+    return -np.count_nonzero(a-b)
 
 if __name__ == "__main__":
-    accuracy_vec = svc_learner()
+    accuracy_vec = svc_learner_new()
