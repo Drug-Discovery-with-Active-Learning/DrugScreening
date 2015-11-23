@@ -1,25 +1,15 @@
 # __author__ = 'Yan'
 
-
 import csv
 import numpy as np
 import random
-import numpy.ma as ma
-import scipy.io as sio
-import scipy.spatial.distance as distance
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.cluster import KMeans
-from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import DistanceMetric
-from sklearn.svm import LinearSVC
 
 import get_oracle as oracle
 import get_error as err
-
-
-from sklearn.metrics import jaccard_similarity_score as jaccard
 
 
 def pool_reader():
@@ -81,36 +71,27 @@ def k_means(data):
 
 
 def get_next(data, active, used):
-    if type(active) == int:
-        score = []
-        for x in xrange(data.shape[0]):
-            score.append(jaccard(data[x], data[active]))
-        rank = np.argsort(score)[::-1]
-        for x in xrange(len(rank)):
-            if rank[x] not in used:
-                # print rank[x]
-                # print jaccard(data[rank[x]], data[active])
-                return rank[x]
-    else: # type(active) == np.list
-        score = []
-        for x in xrange(data.shape[0]):
-            cur_list = []
-            for y in xrange(len(active)):
-                cur_list.append(binary_vec_sim(data[x], data[y]))
-            score.append(np.sum(cur_list))
-        rank = np.argsort(score)
-        for x in xrange(len(rank)):
-            # if rank[x] not in used and score[rank[x]] != 0:
-            if rank[x] not in used:
-                # print rank[x]
-                # print 'score:', score[rank[x]]
+
+    score = []
+    for x in xrange(data.shape[0]):
+        cur_list = []
+        for y in xrange(len(active)):
+            cur_list.append(binary_vec_sim(data[x], data[y]))
+        score.append(np.sum(cur_list))
+    rank = np.argsort(score)
+    for x in xrange(len(rank)):
+        # if rank[x] not in used and score[rank[x]] != 0:
+        if rank[x] not in used:
+            # print rank[x]
+            # print 'score:', score[rank[x]]
                 return rank[x]
 
 
-def svc_learner():
+def svm_learner():
     accuracy = []
     data = pool_reader()
     [row, col] = data.shape
+    true_labels = oracle.readmat()
 
     # do nothing about model until reasonable training subset achieved
     active_count = 0
@@ -123,7 +104,7 @@ def svc_learner():
         if r not in used:
             used.add(r)
             selected.append(data[r].tolist())
-            labels.append(oracle.oracle1(r))
+            labels.append(true_labels[r])
             used.add(r)
             accuracy.append(err.generalization_error(preds))
             if np.sum(labels) == 1 and len(labels) > 1:
@@ -156,12 +137,12 @@ def svc_learner():
         # farthest to all used
         active = list(used)
         cur = get_next(data, active, used)
-        print 'oracle', oracle.oracle1(cur)
+        print 'oracle', true_labels[cur]
 
 
         used.add(cur)
         X = np.vstack([X, data[cur]])
-        y = np.hstack([y.tolist(),[oracle.oracle1(cur)]])
+        y = np.hstack([y.tolist(),[true_labels[cur]]])
         clf.fit(X, y)
         preds = clf.predict(data)
         accuracy.append(err.generalization_error(preds))
@@ -172,10 +153,11 @@ def svc_learner():
     return accuracy
 
 
-def svc_margin_learner():
+def svm_margin_learner():
     accuracy = []
     data = pool_reader()
     [row, col] = data.shape
+    true_labels = oracle.readmat()
 
     # do nothing about model until reasonable training subset achieved
     active_count = 0
@@ -188,7 +170,7 @@ def svc_margin_learner():
         if r not in used:
             used.add(r)
             selected.append(data[r].tolist())
-            labels.append(oracle.oracle1(r))
+            labels.append(true_labels[r])
             used.add(r)
             accuracy.append(err.generalization_error(preds))
             if np.sum(labels) == 1 and len(labels) > 1:
@@ -208,23 +190,15 @@ def svc_margin_learner():
         # nearest to decision boundary
         distance = clf.decision_function(data)
         rank = np.argsort(np.abs(distance))
-        for x in xrange(len(rank)):
-            if rank[x] not in used:
-                cur = rank[x]
+        for i in xrange(len(rank)):
+            if rank[i] not in used:
+                cur = rank[i]
                 break
 
-        print 'oracle', oracle.oracle1(cur)
-
-        # closest to previous 1 active selection strategy
-        # active = y.tolist().index(1)
-        active = np.where(y == 1)[0].tolist()
-        # print active
-        cur = get_next(data, active, used)
-        # print 'oracle',oracle.oracle1(cur)
-
+        # print 'oracle', true_labels[cur])
         used.add(cur)
         X = np.vstack([X, data[cur]])
-        y = np.hstack([y.tolist(),[oracle.oracle1(cur)]])
+        y = np.hstack([y.tolist(),[true_labels[cur]]])
         clf.fit(X, y)
         preds = clf.predict(data)
         accuracy.append(err.generalization_error(preds))
@@ -232,12 +206,41 @@ def svc_margin_learner():
 
     plt.plot(accuracy)
     plt.show()
+
     return accuracy
 
 
 def binary_vec_sim(a, b):
     return -np.count_nonzero(a-b)
 
+def svm_learner_all():
+    data = pool_reader()
+    true_labels = oracle.readmat()
+
+    clf = SVC(kernel = 'linear')
+    X = np.array(data)
+    y = np.array(true_labels)
+
+    # r = random.sample(range(X.shape[0]), 256)
+    # clf.fit(X[r], y[r])
+
+    clf.fit(X, y)
+    preds = clf.predict(data)
+    accuracy = (err.generalization_error(preds))
+    print accuracy
+    return accuracy
+
+def precision():
+    return
+
+def recall():
+    return
+
+def f1():
+    return
+
 
 if __name__ == "__main__":
-    accuracy_vec = svc_margin_learner()
+    #accuracy_vec = svm_learner()
+    #accuracy_vec = svm_margin_learner()
+    accuracy = svm_learner_all()
