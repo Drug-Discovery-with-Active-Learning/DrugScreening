@@ -156,16 +156,30 @@ def get_next_bool(data, points, used):
             return i
 
 
-def get_next(data, active, used):
-    score = []
-    for x in xrange(data.shape[0]):
-        score.append(jaccard(data[x], data[active]))
-    rank = np.argsort(score)[::-1]
-    for x in xrange(len(rank)):
-        if rank[x] not in used:
-            print rank[x]
-            print jaccard(data[rank[x]], data[active])
-            return rank[x]
+def getNext(data, active, used):
+    if type(active) == int:
+        score = []
+        for x in xrange(data.shape[0]):
+            score.append(jaccard(data[x], data[active]))
+        rank = np.argsort(score)[::-1]
+        for x in xrange(len(rank)):
+            if rank[x] not in used:
+                #print rank[x]
+                #print jaccard(data[rank[x]], data[active])
+                return rank[x]
+    else: # type(active) == np.list
+        score = []
+        for x in xrange(data.shape[0]):
+            cur_list = []
+            for y in xrange(len(active)):
+                cur_list.append(jaccard(data[x], data[y]))
+            score.append(np.sum(cur_list))
+        rank = np.argsort(score)[::-1]
+        for x in xrange(len(rank)):
+            if rank[x] not in used:
+                #print rank[x]
+                #print 'score:', score[rank[x]]
+                return rank[x]
 
 
 def svc_learner():
@@ -187,14 +201,14 @@ def svc_learner():
             labels.append(oracle.oracle1(r))
             used.add(r)
             accuracy.append(err.generalization_error(preds))
-            if np.sum(labels) == 1 and len(labels) > 1:
+            if np.sum(labels) == 5 and len(labels) > 1:
                 accuracy.pop()
                 break
 
     X = np.array(selected)
     y = np.array(labels)
 
-    clf = SVC(kernel = 'linear', class_weight = {0:0.1, 1:0.9}, C = 0.1)
+    clf = SVC(kernel = 'linear', class_weight = {0:0.1, 1:0.9})
 
     clf.fit(X, y)
     preds = clf.predict(data)
@@ -202,19 +216,28 @@ def svc_learner():
 
     for x in xrange(256-len(used)):
         # random selection strategy
-        # cur = random.randint(0, row-1)
-        # closest to previous active selection strategy
-        active = y.tolist().index(1)
-        cur = get_next(data, active, used)
-        print oracle.oracle1(cur)
-        if cur not in used:
-            used.add(cur)
-            X = np.vstack([X, data[cur]])
-            y = np.hstack([y.tolist(), [oracle.oracle1(cur)]])
-            clf.fit(X, y)
-            preds = clf.predict(data)
-            accuracy.append(err.generalization_error(preds))
-            # print err.generalization_error(preds)
+
+        # while 1:
+        #     cur = random.randint(0, row-1)
+        #     if cur not in used:
+        #         break
+
+        # closest to previous 1 active selection strategy
+        # active = y.tolist().index(1)
+        active = np.where(y == 1)[0].tolist()
+        #print active
+        cur = getNext(data, active, used)
+        #print 'oracle',oracle.oracle1(cur)
+
+
+        used.add(cur)
+        X = np.vstack([X, data[cur]])
+        y = np.hstack([y.tolist(),[oracle.oracle1(cur)]])
+        clf.fit(X, y)
+        preds = clf.predict(data)
+        accuracy.append(err.generalization_error(preds))
+        # print err.generalization_error(preds)
+
     plt.plot(accuracy)
     plt.show()
     return accuracy
