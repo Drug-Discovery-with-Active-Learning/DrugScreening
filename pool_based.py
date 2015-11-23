@@ -233,7 +233,7 @@ def recall():
     return
 
 
-def f1():
+def f1_score():
     return
 
 
