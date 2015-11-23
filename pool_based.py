@@ -142,6 +142,7 @@ def svm_learner():
         accuracy.append(err.generalization_error(preds, true_labels))
         # print err.generalization_error(preds)
 
+    print f1_score(preds, true_labels)
     plt.plot(accuracy)
     plt.show()
     return accuracy
@@ -188,7 +189,7 @@ def svm_margin_learner():
             if rank[i] not in used:
                 cur = rank[i]
                 break
-        # print 'oracle', true_labels[cur])
+        print 'oracle', true_labels[cur]
         used.add(cur)
         X = np.vstack([X, data[cur]])
         y = np.hstack([y.tolist(),[true_labels[cur]]])
@@ -197,6 +198,7 @@ def svm_margin_learner():
         accuracy.append(err.generalization_error(preds, true_labels))
         # print err.generalization_error(preds)
 
+    print f1_score(preds, true_labels)
     plt.plot(accuracy)
     plt.show()
 
@@ -222,22 +224,28 @@ def svm_learner_all():
     preds = clf.predict(data)
     accuracy = (err.generalization_error(preds, true_labels))
     print accuracy
+    print f1_score(preds, true_labels)
     return accuracy
 
 
-def precision():
-    return
+def precision(preds, true_labels):
+    true_positive = len(np.where(preds+true_labels == 2)[0])
+    selected = len(np.where(preds == 1)[0])
+    return (true_positive+0.0)/selected
 
 
-def recall():
-    return
+def recall(preds, true_labels):
+    true_positive = len(np.where(preds+true_labels == 2)[0])
+    relevant = len(np.where(true_labels == 1)[0])
+    return (true_positive+0.0)/relevant
 
-
-def f1_score():
-    return
+def f1_score(preds, true_labels):
+    p = precision(preds, true_labels)
+    r = recall(preds, true_labels)
+    return 2*p*r/(p+r)
 
 
 if __name__ == "__main__":
+    accuracy = svm_learner_all()
     # accuracy_vec = svm_learner()
     # accuracy_vec = svm_margin_learner()
-    accuracy_vec = svm_margin_learner()
