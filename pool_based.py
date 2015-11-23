@@ -27,30 +27,37 @@ def pool_reader():
 def rfc_learner():
     accuracy = []
     data = pool_reader()
+    true_labels = oracle.read_mat()
     [row_size, col_size] = data.shape
     points = np.empty([0, col_size])
     labels = []
     used = set()
-    cluster = k_means(data)
-    cluster_zero = np.where(cluster == 0)[0]
-    cluster_one = np.where(cluster == 1)[0]
+    # cluster = k_means(data)
+    # cluster_zero = np.where(cluster == 0)[0]
+    # cluster_one = np.where(cluster == 1)[0]
+    flag = True
     for i in xrange(0, 256):
-        # if i == 0:
-        #     pick = random.sample(range(row_size), 1)[0]
-        #     used.add(pick)
-        # else:
-        #     # pick = get_next(data, points, used)
-        #     pick = get_next_bool(data, points, used)
-        #     used.add(pick)
-        while True:
-            pick = cluster_one[random.sample(range(len(cluster_one)), 1)[0]]
-            if pick not in used:
-                break
+        if flag:
+            pick = random.sample(range(row_size), 1)[0]
+        else:
+            # pick = get_next(data, points, used)
+            clf = RandomForestClassifier(n_estimators=10, criterion='entropy')
+            clf.fit(points, np.array(labels))
+            prob = clf.predict_proba(data)
+            rank = np.argsort(prob[:, 1])
+            for x in xrange(len(rank)):
+                # if rank[x] not in used and score[rank[x]] != 0:
+                if rank[x] not in used:
+                    # print rank[x]
+                    # print 'score:', score[rank[x]]
+                    pick = rank[x]
+
         used.add(pick)
         points = np.vstack([points, data[pick]])
-        if oracle.oracle1(pick) == 1:
+        if oracle.oracle1(true_labels, pick) == 1:
+            flag = False
             print i, 'th iteration cur label ', 1, '\n'
-        labels.append(oracle.oracle1(pick))
+        labels.append(oracle.oracle1(true_labels, pick))
         clf = RandomForestClassifier(n_estimators=10, criterion='entropy')
         clf.fit(points, np.array(labels))
         predictions = clf.predict(data)
@@ -142,8 +149,6 @@ def svm_learner():
         accuracy.append(err.generalization_error(preds, true_labels))
         # print err.generalization_error(preds)
 
-    plt.plot(accuracy)
-    plt.show()
     return accuracy
 
 
@@ -197,9 +202,6 @@ def svm_margin_learner():
         accuracy.append(err.generalization_error(preds, true_labels))
         # print err.generalization_error(preds)
 
-    plt.plot(accuracy)
-    plt.show()
-
     return accuracy
 
 
@@ -221,7 +223,7 @@ def svm_learner_all():
     clf.fit(X, y)
     preds = clf.predict(data)
     accuracy = (err.generalization_error(preds, true_labels))
-    print accuracy
+    # print accuracy
     return accuracy
 
 
@@ -240,4 +242,6 @@ def f1_score():
 if __name__ == "__main__":
     # accuracy_vec = svm_learner()
     # accuracy_vec = svm_margin_learner()
-    accuracy_vec = svm_margin_learner()
+    accuracy_vec = rfc_learner()
+    plt.plot(accuracy_vec)
+    plt.show()
