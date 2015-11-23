@@ -43,10 +43,7 @@ def rfc_learner():
         #     pick = get_next_bool(data, points, used)
         #     used.add(pick)
         while True:
-            if i % 50 == 0:
-                pick = cluster_zero[random.sample(range(len(cluster_zero)), 1)[0]]
-            else:
-                pick = cluster_one[random.sample(range(len(cluster_one)), 1)[0]]
+            pick = cluster_one[random.sample(range(len(cluster_one)), 1)[0]]
             if pick not in used:
                 break
         used.add(pick)
@@ -54,7 +51,7 @@ def rfc_learner():
         if oracle.oracle1(pick) == 1:
             print i, 'th iteration cur label ', 1, '\n'
         labels.append(oracle.oracle1(pick))
-        clf = RandomForestClassifier(n_estimators=10)
+        clf = RandomForestClassifier(n_estimators=10, criterion='entropy')
         clf.fit(points, np.array(labels))
         predictions = clf.predict(data)
         accuracy.append(err.generalization_error(predictions))
@@ -71,7 +68,6 @@ def k_means(data):
 
 
 def get_next(data, active, used):
-
     score = []
     for x in xrange(data.shape[0]):
         cur_list = []
@@ -84,7 +80,7 @@ def get_next(data, active, used):
         if rank[x] not in used:
             # print rank[x]
             # print 'score:', score[rank[x]]
-                return rank[x]
+            return rank[x]
 
 
 def svm_learner():
@@ -114,7 +110,7 @@ def svm_learner():
     X = np.array(selected)
     y = np.array(labels)
 
-    clf = SVC(kernel = 'linear')
+    clf = SVC(kernel='linear')
     # clf = LinearSVC()
 
     clf.fit(X, y)
@@ -131,14 +127,12 @@ def svm_learner():
         #         break
 
         # farthest or say most different to previous 1 active selection strategy
-
-        # active = np.where(y == 1)[0].tolist()
+        active = np.where(y == 1)[0].tolist()
 
         # farthest to all used
-        active = list(used)
+        # active = list(used)
         cur = get_next(data, active, used)
         print 'oracle', true_labels[cur]
-
 
         used.add(cur)
         X = np.vstack([X, data[cur]])
@@ -180,7 +174,7 @@ def svm_margin_learner():
     X = np.array(selected)
     y = np.array(labels)
 
-    clf = SVC(kernel = 'linear')
+    clf = SVC(kernel='linear')
     # clf = LinearSVC()
     clf.fit(X, y)
     preds = clf.predict(data)
@@ -194,7 +188,6 @@ def svm_margin_learner():
             if rank[i] not in used:
                 cur = rank[i]
                 break
-
         # print 'oracle', true_labels[cur])
         used.add(cur)
         X = np.vstack([X, data[cur]])
