@@ -24,7 +24,7 @@ def pool_reader():
     return data
 
 
-def rfc_learner():
+def rfc_learner(option):
     accuracy = []
     data = pool_reader()
     true_labels = oracle.read_mat()
@@ -37,31 +37,39 @@ def rfc_learner():
     # cluster_one = np.where(cluster == 1)[0]
     flag = True
     for i in xrange(0, 256):
-        if flag:
-            pick = random.sample(range(row_size), 1)[0]
+        if option == 'select':
+            if flag:
+                pick = random.sample(range(row_size), 1)[0]
+            else:
+                # pick = get_next(data, points, used)
+                clf = RandomForestClassifier(n_estimators=10, criterion='entropy')
+                clf.fit(points, np.array(labels))
+                prob = clf.predict_proba(data)
+                [row, col] = prob.shape
+                if col == 2:
+                    rank = np.argsort(prob[:, 1])
+                else:
+                    rank = np.argsort(prob[:, 0])
+                for x in xrange(len(rank)):
+                    if rank[x] not in used:
+                        pick = rank[x]
         else:
-            # pick = get_next(data, points, used)
-            clf = RandomForestClassifier(n_estimators=10, criterion='entropy')
-            clf.fit(points, np.array(labels))
-            prob = clf.predict_proba(data)
-            rank = np.argsort(prob[:, 1])
-            for x in xrange(len(rank)):
-                # if rank[x] not in used and score[rank[x]] != 0:
-                if rank[x] not in used:
-                    # print rank[x]
-                    # print 'score:', score[rank[x]]
-                    pick = rank[x]
+            while 1:
+                pick = random.sample(range(row_size), 1)[0]
+                if pick not in used:
+                    break
 
         used.add(pick)
         points = np.vstack([points, data[pick]])
         if oracle.oracle1(true_labels, pick) == 1:
             flag = False
-            print i, 'th iteration cur label ', 1, '\n'
+            # print i, 'th iteration cur label ', 1, '\n'
         labels.append(oracle.oracle1(true_labels, pick))
         clf = RandomForestClassifier(n_estimators=10, criterion='entropy')
         clf.fit(points, np.array(labels))
         predictions = clf.predict(data)
-        accuracy.append(err.generalization_error(predictions, true_labels))
+        cur_acc = err.generalization_error(predictions, true_labels)
+        accuracy.append(cur_acc)
 
     return accuracy
 
@@ -240,6 +248,7 @@ def recall(preds, true_labels):
     relevant = len(np.where(true_labels == 1)[0])
     return (true_positive+0.0)/relevant
 
+
 def f1_score(preds, true_labels):
     p = precision(preds, true_labels)
     r = recall(preds, true_labels)
@@ -250,8 +259,12 @@ if __name__ == "__main__":
     # accuracy = svm_learner_all()
     # accuracy_vec = svm_learner()
     # accuracy_vec = svm_margin_learner()
-
-    accuracy_vec = rfc_learner()
-    plt.plot(accuracy_vec)
+    accuracy_vec = rfc_learner('select')
+    rand_vec = rfc_learner('rand')
+    line1, = plt.plot(accuracy_vec, label='Active')
+    line2, = plt.plot(rand_vec, label='Random')
+    # first_legend = plt.legend(handles=[line1])
+    # second_legend = plt.legend(handles=[line2])
+    plt.legend(['Active', 'Random'], loc=2)
     plt.show()
 
