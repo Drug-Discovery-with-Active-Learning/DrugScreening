@@ -70,7 +70,6 @@ def rfc_learner(option):
         predictions = clf.predict(data)
         cur_acc = err.generalization_error(predictions, true_labels)
         accuracy.append(cur_acc)
-
     return accuracy
 
 
@@ -96,7 +95,7 @@ def get_next(data, active, used):
             return rank[x]
 
 
-def svm_learner():
+def svm_learner(option):
     accuracy = []
     data = pool_reader()
     [row, col] = data.shape
@@ -132,20 +131,19 @@ def svm_learner():
 
     for x in xrange(256-len(used)):
         # print x
-
-        # random selection strategy
-        # while 1:
-        #     cur = random.randint(0, row-1)
-        #     if cur not in used:
-        #         break
-
-        # farthest or say most different to previous 1 active selection strategy
-        active = np.where(y == 1)[0].tolist()
-
-        # farthest to all used
-        # active = list(used)
-        cur = get_next(data, active, used)
-        print 'oracle', true_labels[cur]
+        if option == 'rand':
+            # random selection strategy
+            while 1:
+                cur = random.randint(0, row-1)
+                if cur not in used:
+                    break
+        else:
+            # farthest or say most different to previous 1 active selection strategy
+            active = np.where(y == 0)[0].tolist()
+            # farthest to all used
+            # active = list(used)
+            cur = get_next(data, active, used)
+            print 'oracle', true_labels[cur]
 
         used.add(cur)
         X = np.vstack([X, data[cur]])
@@ -156,6 +154,8 @@ def svm_learner():
         # print err.generalization_error(preds)
 
     print f1_score(preds, true_labels)
+    print precision(preds, true_labels)
+    print recall(preds, true_labels)
     return accuracy
 
 
@@ -246,6 +246,7 @@ def precision(preds, true_labels):
 def recall(preds, true_labels):
     true_positive = len(np.where(preds+true_labels == 2)[0])
     relevant = len(np.where(true_labels == 1)[0])
+
     return (true_positive+0.0)/relevant
 
 
@@ -256,15 +257,14 @@ def f1_score(preds, true_labels):
 
 
 if __name__ == "__main__":
+    acc = svm_learner('rand')
     # accuracy = svm_learner_all()
     # accuracy_vec = svm_learner()
     # accuracy_vec = svm_margin_learner()
-    accuracy_vec = rfc_learner('select')
-    rand_vec = rfc_learner('rand')
-    line1, = plt.plot(accuracy_vec, label='Active')
-    line2, = plt.plot(rand_vec, label='Random')
-    # first_legend = plt.legend(handles=[line1])
-    # second_legend = plt.legend(handles=[line2])
-    plt.legend(['Active', 'Random'], loc=2)
-    plt.show()
+    # accuracy_vec = svm_learner('select')
+    # rand_vec = svm_learner('rand')
+    # line1, = plt.plot(accuracy_vec, label='Active')
+    # line2, = plt.plot(rand_vec, label='Random')
+    # plt.legend(['Active', 'Random'], loc=2)
+    # plt.show()
 
