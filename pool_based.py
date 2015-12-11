@@ -1,4 +1,4 @@
-# __author__ = 'Yan'
+# __author__ = 'yanhe'
 
 import csv
 import numpy as np
@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.cluster import KMeans
+from sklearn.linear_model import LogisticRegression
 
 import get_oracle as oracle
 import get_error as err
@@ -32,9 +33,6 @@ def rfc_learner(option):
     points = np.empty([0, col_size])
     labels = []
     used = set()
-    # cluster = k_means(data)
-    # cluster_zero = np.where(cluster == 0)[0]
-    # cluster_one = np.where(cluster == 1)[0]
     flag = True
     for i in xrange(0, 256):
         if option == 'select':
@@ -63,14 +61,33 @@ def rfc_learner(option):
         points = np.vstack([points, data[pick]])
         if oracle.oracle1(true_labels, pick) == 1:
             flag = False
-            # print i, 'th iteration cur label ', 1, '\n'
         labels.append(oracle.oracle1(true_labels, pick))
         clf = RandomForestClassifier(n_estimators=10, criterion='entropy')
         clf.fit(points, np.array(labels))
         predictions = clf.predict(data)
         cur_acc = err.generalization_error(predictions, true_labels)
         accuracy.append(cur_acc)
+    plt.plot(accuracy)
+    plt.show()
     return accuracy
+
+
+# def lrc_learner(option):
+#     accuracy = []
+#     data = pool_reader()
+#     true_labels = oracle.read_mat()
+#     [row_size, col_size] = data.shape
+#     points = np.empty([0, col_size])
+#     labels = []
+#     used = set()
+#     flag = True
+#     for i in xrange(0, 256):
+#         if flag:
+#             pick = random.sample(range(row_size), 1)[0]
+#         else:
+#             clf = LogisticRegression()
+#             clf.fit(points, np.array(labels))
+#             prob = clf.predict_proba(data)
 
 
 def k_means(data):
@@ -257,7 +274,7 @@ def f1_score(preds, true_labels):
 
 
 if __name__ == "__main__":
-    acc = svm_learner('rand')
+    acc = rfc_learner('select')
     # accuracy = svm_learner_all()
     # accuracy_vec = svm_learner()
     # accuracy_vec = svm_margin_learner()
