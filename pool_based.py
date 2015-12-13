@@ -43,14 +43,12 @@ def rfc_learner(option):
                 clf = RandomForestClassifier(n_estimators=10, criterion='entropy')
                 clf.fit(points, np.array(labels))
                 prob = clf.predict_proba(data)
-                [row, col] = prob.shape
-                if col == 2:
-                    rank = np.argsort(prob[:, 1])
-                else:
-                    rank = np.argsort(prob[:, 0])
+                weight = np.abs(prob[:, 0] - 0.5)
+                rank = np.argsort(weight)
                 for x in xrange(len(rank)):
                     if rank[x] not in used:
                         pick = rank[x]
+                        break
         else:
             while 1:
                 pick = random.sample(range(row_size), 1)[0]
@@ -72,22 +70,48 @@ def rfc_learner(option):
     return accuracy
 
 
-# def lrc_learner(option):
-#     accuracy = []
-#     data = pool_reader()
-#     true_labels = oracle.read_mat()
-#     [row_size, col_size] = data.shape
-#     points = np.empty([0, col_size])
-#     labels = []
-#     used = set()
-#     flag = True
-#     for i in xrange(0, 256):
-#         if flag:
-#             pick = random.sample(range(row_size), 1)[0]
-#         else:
-#             clf = LogisticRegression()
-#             clf.fit(points, np.array(labels))
-#             prob = clf.predict_proba(data)
+def lrc_learner(option):
+    accuracy = []
+    data = pool_reader()
+    true_labels = oracle.read_mat()
+    [row_size, col_size] = data.shape
+    points = np.empty([0, col_size])
+    labels = []
+    used = set()
+    flag = True
+    for i in xrange(0, 256):
+        pick = -1
+        if flag:
+            while 1:
+                pick = random.sample(range(row_size), 1)[0]
+                if pick not in used:
+                    points = np.vstack([points, data[pick]])
+                    label = oracle.oracle1(true_labels, pick)
+                    labels.append(label)
+                    if label == 1:
+                        flag = False
+                    break
+        else:
+            clf = LogisticRegression()
+            clf.fit(points, np.array(labels))
+            prob = clf.predict_proba(data)
+            weight = np.abs(prob[:, 0] - 0.5)
+            rank = np.argsort(weight)
+            for x in xrange(len(rank)):
+                if rank[x] not in used:
+                    pick = rank[x]
+                    break
+            used.add(pick)
+            points = np.vstack([points, data[pick]])
+            label = oracle.oracle1(true_labels, pick)
+            labels.append(label)
+            clf.fit(points, np.array(labels))
+            predictions = clf.predict(data)
+            cur_acc = err.generalization_error(predictions, true_labels)
+            accuracy.append(cur_acc)
+    plt.plot(accuracy)
+    plt.show()
+    return accuracy
 
 
 def k_means(data):
@@ -274,7 +298,7 @@ def f1_score(preds, true_labels):
 
 
 if __name__ == "__main__":
-    acc = rfc_learner('select')
+    acc = lrc_learner('select')
     # accuracy = svm_learner_all()
     # accuracy_vec = svm_learner()
     # accuracy_vec = svm_margin_learner()
