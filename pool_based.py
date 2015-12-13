@@ -247,11 +247,11 @@ def f1_score(preds, true_labels):
 
 
 if __name__ == "__main__":
-    # accuracy = svm_learner_all()
+    accuracy = svm_learner_all()
     # accuracy_vec = svm_learner()
     # accuracy_vec = svm_margin_learner()
 
-    accuracy_vec = rfc_learner()
-    plt.plot(accuracy_vec)
-    plt.show()
+    # accuracy_vec = rfc_learner()
+    # plt.plot(accuracy_vec)
+    # plt.show()
 
