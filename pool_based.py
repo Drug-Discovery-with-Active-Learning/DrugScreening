@@ -1,4 +1,4 @@
-# __author__ = 'Yan'
+# __author__ = 'yanhe'
 
 import csv
 import numpy as np
@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.cluster import KMeans
+from sklearn.linear_model import LogisticRegression
 
 import get_oracle as oracle
 import get_error as err
@@ -24,7 +25,7 @@ def pool_reader():
     return data
 
 
-def rfc_learner():
+def rfc_learner(option):
     accuracy = []
     data = pool_reader()
     true_labels = oracle.read_mat()
@@ -32,37 +33,84 @@ def rfc_learner():
     points = np.empty([0, col_size])
     labels = []
     used = set()
-    # cluster = k_means(data)
-    # cluster_zero = np.where(cluster == 0)[0]
-    # cluster_one = np.where(cluster == 1)[0]
     flag = True
     for i in xrange(0, 256):
-        if flag:
-            pick = random.sample(range(row_size), 1)[0]
+        if option == 'select':
+            if flag:
+                pick = random.sample(range(row_size), 1)[0]
+            else:
+                # pick = get_next(data, points, used)
+                clf = RandomForestClassifier(n_estimators=10, criterion='entropy')
+                clf.fit(points, np.array(labels))
+                prob = clf.predict_proba(data)
+                weight = np.abs(prob[:, 0] - 0.5)
+                rank = np.argsort(weight)
+                for x in xrange(len(rank)):
+                    if rank[x] not in used:
+                        pick = rank[x]
+                        break
         else:
-            # pick = get_next(data, points, used)
-            clf = RandomForestClassifier(n_estimators=10, criterion='entropy')
-            clf.fit(points, np.array(labels))
-            prob = clf.predict_proba(data)
-            rank = np.argsort(prob[:, 1])
-            for x in xrange(len(rank)):
-                # if rank[x] not in used and score[rank[x]] != 0:
-                if rank[x] not in used:
-                    # print rank[x]
-                    # print 'score:', score[rank[x]]
-                    pick = rank[x]
+            while 1:
+                pick = random.sample(range(row_size), 1)[0]
+                if pick not in used:
+                    break
 
         used.add(pick)
         points = np.vstack([points, data[pick]])
         if oracle.oracle1(true_labels, pick) == 1:
             flag = False
-            print i, 'th iteration cur label ', 1, '\n'
         labels.append(oracle.oracle1(true_labels, pick))
         clf = RandomForestClassifier(n_estimators=10, criterion='entropy')
         clf.fit(points, np.array(labels))
         predictions = clf.predict(data)
-        accuracy.append(err.generalization_error(predictions, true_labels))
+        cur_acc = err.generalization_error(predictions, true_labels)
+        accuracy.append(cur_acc)
+    plt.plot(accuracy)
+    plt.show()
+    return accuracy
 
+
+def lrc_learner(option):
+    accuracy = []
+    data = pool_reader()
+    true_labels = oracle.read_mat()
+    [row_size, col_size] = data.shape
+    points = np.empty([0, col_size])
+    labels = []
+    used = set()
+    flag = True
+    for i in xrange(0, 256):
+        pick = -1
+        if flag:
+            while 1:
+                pick = random.sample(range(row_size), 1)[0]
+                if pick not in used:
+                    points = np.vstack([points, data[pick]])
+                    label = oracle.oracle1(true_labels, pick)
+                    labels.append(label)
+                    if label == 1:
+                        flag = False
+                    break
+        else:
+            clf = LogisticRegression()
+            clf.fit(points, np.array(labels))
+            prob = clf.predict_proba(data)
+            weight = np.abs(prob[:, 0] - 0.5)
+            rank = np.argsort(weight)
+            for x in xrange(len(rank)):
+                if rank[x] not in used:
+                    pick = rank[x]
+                    break
+            used.add(pick)
+            points = np.vstack([points, data[pick]])
+            label = oracle.oracle1(true_labels, pick)
+            labels.append(label)
+            clf.fit(points, np.array(labels))
+            predictions = clf.predict(data)
+            cur_acc = err.generalization_error(predictions, true_labels)
+            accuracy.append(cur_acc)
+    plt.plot(accuracy)
+    plt.show()
     return accuracy
 
 
@@ -88,7 +136,7 @@ def get_next(data, active, used):
             return rank[x]
 
 
-def svm_learner():
+def svm_learner(option):
     accuracy = []
     data = pool_reader()
     [row, col] = data.shape
@@ -124,20 +172,19 @@ def svm_learner():
 
     for x in xrange(256-len(used)):
         # print x
-
-        # random selection strategy
-        # while 1:
-        #     cur = random.randint(0, row-1)
-        #     if cur not in used:
-        #         break
-
-        # farthest or say most different to previous 1 active selection strategy
-        active = np.where(y == 1)[0].tolist()
-
-        # farthest to all used
-        # active = list(used)
-        cur = get_next(data, active, used)
-        print 'oracle', true_labels[cur]
+        if option == 'rand':
+            # random selection strategy
+            while 1:
+                cur = random.randint(0, row-1)
+                if cur not in used:
+                    break
+        else:
+            # farthest or say most different to previous 1 active selection strategy
+            active = np.where(y == 0)[0].tolist()
+            # farthest to all used
+            # active = list(used)
+            cur = get_next(data, active, used)
+            print 'oracle', true_labels[cur]
 
         used.add(cur)
         X = np.vstack([X, data[cur]])
@@ -148,6 +195,8 @@ def svm_learner():
         # print err.generalization_error(preds)
 
     print f1_score(preds, true_labels)
+    print precision(preds, true_labels)
+    print recall(preds, true_labels)
     return accuracy
 
 
@@ -238,7 +287,9 @@ def precision(preds, true_labels):
 def recall(preds, true_labels):
     true_positive = len(np.where(preds+true_labels == 2)[0])
     relevant = len(np.where(true_labels == 1)[0])
+
     return (true_positive+0.0)/relevant
+
 
 def f1_score(preds, true_labels):
     p = precision(preds, true_labels)
@@ -247,11 +298,14 @@ def f1_score(preds, true_labels):
 
 
 if __name__ == "__main__":
-    accuracy = svm_learner_all()
+    acc = lrc_learner('select')
+    # accuracy = svm_learner_all()
     # accuracy_vec = svm_learner()
     # accuracy_vec = svm_margin_learner()
-
-    # accuracy_vec = rfc_learner()
-    # plt.plot(accuracy_vec)
+    # accuracy_vec = svm_learner('select')
+    # rand_vec = svm_learner('rand')
+    # line1, = plt.plot(accuracy_vec, label='Active')
+    # line2, = plt.plot(rand_vec, label='Random')
+    # plt.legend(['Active', 'Random'], loc=2)
     # plt.show()
 

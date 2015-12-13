@@ -1,4 +1,4 @@
-# __author__ = 'Yan'
+# __author__ = 'yanhe'
 
 import scipy.io as sio
 import numpy as np
@@ -19,17 +19,14 @@ def oracle1(true_labels, n):
 
 # input: features is the feature vector returned by nextCompound
 # output: label is the true label (0 = inactive; 1 = active)
-def oracle2(features):
-    data = []
-    with open('resources/pool.csv', 'r') as pool_file:
-        file_reader = csv.reader(pool_file)
-        for row in file_reader:
-            cur = np.array(row)
-            data.append(cur)
+def oracle2(point, data):
     size = len(data)
     m = sio.loadmat('resources/trueLabels.mat')
     true_labels = np.array(m['trueLabels'][0])
     for n in range(0, size):
-        if np.sum(np.abs(np.subtract(data[n, :], features))) == 0:
+        # if np.sum(np.abs(np.subtract(data[n, :], features))) == 0:
+        #     label = true_labels[n]
+        #     return label
+        if np.sum(data[n] == point) == len(point):
             label = true_labels[n]
             return label
