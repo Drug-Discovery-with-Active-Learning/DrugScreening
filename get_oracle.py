@@ -24,9 +24,6 @@ def oracle2(point, data):
     m = sio.loadmat('resources/trueLabels.mat')
     true_labels = np.array(m['trueLabels'][0])
     for n in range(0, size):
-        # if np.sum(np.abs(np.subtract(data[n, :], features))) == 0:
-        #     label = true_labels[n]
-        #     return label
         if np.sum(data[n] == point) == len(point):
             label = true_labels[n]
             return label

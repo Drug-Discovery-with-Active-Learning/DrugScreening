@@ -1,4 +1,4 @@
-# __author__ = 'yanhe', 'xiaoxul'
+# __author__ = 'yanhe' and 'xiaoxul'
 
 import csv
 import numpy as np
@@ -6,7 +6,6 @@ import random
 import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
-from sklearn.cluster import KMeans
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import matthews_corrcoef
 from sklearn.metrics import cohen_kappa_score
@@ -139,12 +138,6 @@ def lrc_learner(option):
     return accuracy
 
 
-def k_means(data):
-    clf = KMeans(n_clusters=2, copy_x=True)
-    cluster = clf.fit_predict(data)
-    return cluster
-
-
 def get_next(data, active, used):
     score = []
     for x in xrange(data.shape[0]):
@@ -154,10 +147,7 @@ def get_next(data, active, used):
         score.append(np.sum(cur_list))
     rank = np.argsort(score)
     for x in xrange(len(rank)):
-        # if rank[x] not in used and score[rank[x]] != 0:
         if rank[x] not in used:
-            # print rank[x]
-            # print 'score:', score[rank[x]]
             return rank[x]
 
 
@@ -187,16 +177,11 @@ def svm_learner(option):
 
     X = np.array(selected)
     y = np.array(labels)
-
     clf = SVC(kernel='linear')
-    # clf = LinearSVC()
-
     clf.fit(X, y)
     preds = clf.predict(data)
     accuracy.append(err.generalization_error(preds, true_labels))
-
     for x in xrange(256-len(used)):
-        # print x
         if option == 'rand':
             # random selection strategy
             while 1:
@@ -207,21 +192,16 @@ def svm_learner(option):
             # farthest or say most different to previous 1 active selection strategy
             active = np.where(y == 0)[0].tolist()
             # farthest to all used
-            # active = list(used)
             cur = get_next(data, active, used)
             print 'oracle', true_labels[cur]
-
         used.add(cur)
         X = np.vstack([X, data[cur]])
         y = np.hstack([y.tolist(),[true_labels[cur]]])
         clf.fit(X, y)
         preds = clf.predict(data)
         accuracy.append(err.generalization_error(preds, true_labels))
-        # print err.generalization_error(preds)
 
     print f1_score(preds, true_labels)
-    # print precision(preds, true_labels)
-    # print recall(preds, true_labels)
     return accuracy
 
 
@@ -232,7 +212,6 @@ def svm_margin_learner():
     true_labels = oracle.read_mat()
 
     # do nothing about model until reasonable training subset achieved
-    active_count = 0
     preds = np.zeros(row)
     used = set()
     selected = []
@@ -252,11 +231,9 @@ def svm_margin_learner():
     y = np.array(labels)
 
     clf = SVC(kernel='linear')
-    # clf = LinearSVC()
     clf.fit(X, y)
     preds = clf.predict(data)
     accuracy.append(err.generalization_error(preds, true_labels))
-
     for x in xrange(256-len(used)):
         # nearest to decision boundary
         distance = clf.decision_function(data)
@@ -272,8 +249,6 @@ def svm_margin_learner():
         clf.fit(X, y)
         preds = clf.predict(data)
         accuracy.append(err.generalization_error(preds, true_labels))
-        # print err.generalization_error(preds)
-
     print f1_score(preds, true_labels)
     return accuracy
 
@@ -285,18 +260,12 @@ def binary_vec_sim(a, b):
 def svm_learner_all():
     data = pool_reader()
     true_labels = oracle.read_mat()
-
     clf = SVC(kernel='linear')
     X = np.array(data)
     y = np.array(true_labels)
-
-    # r = random.sample(range(X.shape[0]), 256)
-    # clf.fit(X[r], y[r])
-
     clf.fit(X, y)
     preds = clf.predict(data)
     accuracy = (err.generalization_error(preds, true_labels))
-
     print accuracy
     print f1_score(preds, true_labels)
     return accuracy
@@ -327,14 +296,6 @@ def f1_score(preds, true_labels):
 
 
 if __name__ == "__main__":
-    # acc = rfc_learner('rand')
-    # accuracy = svm_learner_all()
-    # accuracy_vec = svm_learner()
+    acc = rfc_learner('rand')
     # accuracy_vec = svm_margin_learner()
     # accuracy_vec = svm_learner('select')
-    rand_vec = svm_learner('rand')
-    # line1, = plt.plot(accuracy_vec, label='Active')
-    # line2, = plt.plot(rand_vec, label='Random')
-    # plt.legend(['Active', 'Random'], loc=2)
-    # plt.show()
-
