@@ -1,4 +1,4 @@
-# __author__ = 'yanhe'
+# __author__ = 'yanhe', 'xiaoxul'
 
 import csv
 import numpy as np
@@ -8,6 +8,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.cluster import KMeans
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import matthews_corrcoef
+from sklearn.metrics import cohen_kappa_score
 
 import get_oracle as oracle
 import get_error as err
@@ -34,6 +36,7 @@ def rfc_learner(option):
     labels = []
     used = set()
     flag = True
+    predictions = np.zeros(row_size)
     for i in xrange(0, 256):
         if option == 'select':
             if flag:
@@ -67,6 +70,7 @@ def rfc_learner(option):
         accuracy.append(cur_acc)
     plt.plot(accuracy)
     plt.show()
+    print "f1 ", f1_score(predictions, true_labels)
     return accuracy
 
 
@@ -75,42 +79,63 @@ def lrc_learner(option):
     data = pool_reader()
     true_labels = oracle.read_mat()
     [row_size, col_size] = data.shape
+    predictions = np.zeros(row_size)
     points = np.empty([0, col_size])
     labels = []
     used = set()
     flag = True
     for i in xrange(0, 256):
-        pick = -1
-        if flag:
+        if option == "select":
+            pick = -1
+            if flag:
+                while 1:
+                    pick = random.sample(range(row_size), 1)[0]
+                    if pick not in used:
+                        used.add(pick)
+                        points = np.vstack([points, data[pick]])
+                        label = oracle.oracle1(true_labels, pick)
+                        labels.append(label)
+                        if label == 1:
+                            flag = False
+                        break
+            else:
+                clf = LogisticRegression()
+                clf.fit(points, np.array(labels))
+                prob = clf.predict_proba(data)
+                weight = np.abs(prob[:, 0] - 0.5)
+                rank = np.argsort(weight)
+                for x in xrange(len(rank)):
+                    if rank[x] not in used:
+                        pick = rank[x]
+                        break
+                used.add(pick)
+                points = np.vstack([points, data[pick]])
+                label = oracle.oracle1(true_labels, pick)
+                labels.append(label)
+                clf.fit(points, np.array(labels))
+                predictions = clf.predict(data)
+                cur_acc = err.generalization_error(predictions, true_labels)
+                accuracy.append(cur_acc)
+        else:
             while 1:
                 pick = random.sample(range(row_size), 1)[0]
                 if pick not in used:
-                    points = np.vstack([points, data[pick]])
-                    label = oracle.oracle1(true_labels, pick)
-                    labels.append(label)
-                    if label == 1:
-                        flag = False
-                    break
-        else:
-            clf = LogisticRegression()
-            clf.fit(points, np.array(labels))
-            prob = clf.predict_proba(data)
-            weight = np.abs(prob[:, 0] - 0.5)
-            rank = np.argsort(weight)
-            for x in xrange(len(rank)):
-                if rank[x] not in used:
-                    pick = rank[x]
                     break
             used.add(pick)
             points = np.vstack([points, data[pick]])
             label = oracle.oracle1(true_labels, pick)
             labels.append(label)
-            clf.fit(points, np.array(labels))
-            predictions = clf.predict(data)
-            cur_acc = err.generalization_error(predictions, true_labels)
-            accuracy.append(cur_acc)
+            if label == 1:
+                flag = False
+            if not flag:
+                clf = LogisticRegression()
+                clf.fit(points, np.array(labels))
+                predictions = clf.predict(data)
+                cur_acc = err.generalization_error(predictions, true_labels)
+                accuracy.append(cur_acc)
     plt.plot(accuracy)
     plt.show()
+    print "f1 ", f1_score(predictions, true_labels)
     return accuracy
 
 
@@ -195,8 +220,8 @@ def svm_learner(option):
         # print err.generalization_error(preds)
 
     print f1_score(preds, true_labels)
-    print precision(preds, true_labels)
-    print recall(preds, true_labels)
+    # print precision(preds, true_labels)
+    # print recall(preds, true_labels)
     return accuracy
 
 
@@ -218,7 +243,6 @@ def svm_margin_learner():
             used.add(r)
             selected.append(data[r].tolist())
             labels.append(true_labels[r])
-            used.add(r)
             accuracy.append(err.generalization_error(preds, true_labels))
             if np.sum(labels) == 1 and len(labels) > 1:
                 accuracy.pop()
@@ -287,23 +311,28 @@ def precision(preds, true_labels):
 def recall(preds, true_labels):
     true_positive = len(np.where(preds+true_labels == 2)[0])
     relevant = len(np.where(true_labels == 1)[0])
-
     return (true_positive+0.0)/relevant
 
 
 def f1_score(preds, true_labels):
+    mcc = matthews_corrcoef(preds, true_labels)
+    print "mcc ", mcc
+    kappa = cohen_kappa_score(preds, true_labels)
+    print "kappa ", kappa
     p = precision(preds, true_labels)
+    print "precision ", p
     r = recall(preds, true_labels)
+    print "recall", r
     return 2*p*r/(p+r)
 
 
 if __name__ == "__main__":
-    acc = lrc_learner('select')
+    # acc = rfc_learner('rand')
     # accuracy = svm_learner_all()
     # accuracy_vec = svm_learner()
     # accuracy_vec = svm_margin_learner()
     # accuracy_vec = svm_learner('select')
-    # rand_vec = svm_learner('rand')
+    rand_vec = svm_learner('rand')
     # line1, = plt.plot(accuracy_vec, label='Active')
     # line2, = plt.plot(rand_vec, label='Random')
     # plt.legend(['Active', 'Random'], loc=2)
